@@ -39,12 +39,9 @@
 ## 2. 프로젝트 실행 명령어 (필수)
 
 프로젝트 **루트 디렉토리**에서 아래 명령어를 실행합니다.  
-아래 두 명령어에 대한 상세 설명은 **3.3**에 첨부되어 있습니다.
 
 ```bash
 ./gradlew clean test
-./gradlew clean test --info *> test-output.txt
-./gradlew clean test --info > test-output.txt
 ````
 
 ### 명령어 설명
@@ -105,42 +102,19 @@ reservation-system/build/reports/tests/test/index.html
 테스트 실행 시 콘솔 로그를 파일로 저장하여
 테스트 문서의 **증빙 자료(test-output.txt)**로 활용할 수 있습니다.
 
-#### ① 표준출력 + 표준에러 전체 저장 (디버깅 / 증빙용)
+#### ① test-output.txt로 로그 저장
 
 ```bash
-./gradlew clean test --info *> test-output.txt
+reservation-system\build\test-output.txt
 ```
 
-**설명**
-
-* 표준출력(stdout) + 표준에러(stderr)를 모두 파일에 저장
-* 예외 Stack Trace, 경고 로그, Hibernate SQL 로그까지 포함
-* 테스트 실패 원인 분석 및 결함 증빙용으로 가장 적합
+.\gradlew clean test 실행 시 자동으로 위 경로에 로그 저장
 
 **활용 예**
 
 * FAIL 테스트의 Stack Trace 첨부
 * ErrorCode / 예외 발생 흐름 캡처
 * 교수님 제출용 테스트 로그 증빙
-
----
-
-#### ② 표준출력만 저장 (깔끔한 결과 정리용)
-
-```bash
-./gradlew clean test --info > test-output.txt
-```
-
-**설명**
-
-* 표준출력(stdout)만 저장
-* 테스트 결과 요약 로그 중심
-* 불필요한 에러 출력 제외 → 문서용으로 깔끔
-
-**활용 예**
-
-* `[TC=UT-ROOM-...] [RESULT=PASS/FAIL]` 로그 정리
-* 테스트 케이스 표의 **“실제 결과(Actual Output)”** 칸 작성
 
 ---
 
