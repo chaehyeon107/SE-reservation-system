@@ -36,6 +36,3 @@ public class SeatReservationRequestDto {
     private Long studentId;
 
 }
-
-
-

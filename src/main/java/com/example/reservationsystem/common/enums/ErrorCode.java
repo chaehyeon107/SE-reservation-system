@@ -21,21 +21,16 @@ public enum ErrorCode implements BaseCode {
     ROOM_WEEKLY_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "주간 최대 회의실 이용 시간을 초과했습니다."),
     INVALID_SEAT_ID(HttpStatus.BAD_REQUEST, "좌석 번호는 1~70 사이여야 합니다."),
     SEAT_DAILY_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "일 최대 이용 시간(4시간)을 초과했습니다."),
-    INVALID_DURATION_HOURS(HttpStatus.BAD_REQUEST, "이용 가능 시간은 2시간입니다."),
-    SEAT_ALREADY_IN_USE(HttpStatus.BAD_REQUEST, "이미 이용이 시작되어 취소할 수 없습니다."),
-
-
+    INVALID_DURATION_HOURS(HttpStatus.BAD_REQUEST, "이용 가능 시간은 2시간 또는 4시간입니다."),
 
     // ====== 404 NOT_FOUND ======
     ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 회의실입니다."),
-    RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "현재 등록된 회의실 예약이 없습니다."),
+    RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "예약 내역을 찾을 수 없습니다."),
     STUDENT_NOT_FOUND(HttpStatus.NOT_FOUND, "학생 정보를 찾을 수 없습니다."),
     SEAT_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 좌석을 찾을 수 없습니다."),
-    SEAT_RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "예약된 좌석이 없습니다."),
-    SEAT_RESERVATION_NOT_FOUND1(HttpStatus.NOT_FOUND, "예약된 내역이 없습니다."),
+
     // ====== 403 FORBIDDEN ======
     NO_CANCEL_PERMISSION(HttpStatus.FORBIDDEN, "예약 취소 권한은 대표자에게만 있습니다."),
-    NO_CANCEL_PERMISSION1(HttpStatus.FORBIDDEN, "권한이 없습니다."),
 
     // ====== 409 CONFLICT ======
     ALREADY_CANCELED_RESERVATION(HttpStatus.CONFLICT, "이미 취소된 예약입니다."),
@@ -43,8 +38,7 @@ public enum ErrorCode implements BaseCode {
     INVALID_TIME_RANGE(HttpStatus.BAD_REQUEST, "예약 시간 범위가 올바르지 않습니다."),
     INVALID_REQUEST(HttpStatus.BAD_REQUEST, "잘못된 요청입니다."),
     SEAT_ALREADY_RESERVED(HttpStatus.CONFLICT, "해당 시간대에 이미 예약된 좌석입니다."),
-    NO_AVAILABLE_SEATS(HttpStatus.CONFLICT, "예약 가능한 좌석이 없습니다."),
-    RESERVATION_ALREADY_FINISHED(HttpStatus.CONFLICT, "이미 종료된 예약은 취소할 수 없습니다.");
+    NO_AVAILABLE_SEATS(HttpStatus.CONFLICT, "예약 가능한 좌석이 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String message;

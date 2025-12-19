@@ -1,6 +1,7 @@
 package com.example.reservationsystem.domain.entity;
 
 
+import com.example.reservationsystem.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -14,7 +15,7 @@ import java.time.LocalTime;
 @Getter
 @AllArgsConstructor(access = AccessLevel.PROTECTED)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class RoomReservation {
+public class RoomReservation extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -37,11 +38,6 @@ public class RoomReservation {
 
     @Enumerated(EnumType.STRING)
     private RoomReservationStatus status;
-
-//    public boolean isCanceled() {
-//        return status == RoomReservationStatus.CANCELED_REFUND
-//                || status == RoomReservationStatus.CANCELED_PENALTY;
-//    }
 
     public void cancel(RoomReservationStatus status) {
         this.status = status;

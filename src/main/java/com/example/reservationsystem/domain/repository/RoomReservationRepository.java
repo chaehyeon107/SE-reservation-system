@@ -1,7 +1,6 @@
 package com.example.reservationsystem.domain.repository;
 
 import com.example.reservationsystem.domain.entity.RoomReservation;
-import com.example.reservationsystem.domain.entity.RoomReservationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,23 +11,6 @@ import java.util.List;
 
 public interface RoomReservationRepository extends JpaRepository<RoomReservation, Long> {
 
-
-    @Query("""
-    SELECT COUNT(r) > 0
-    FROM RoomReservation r
-    WHERE r.room.id = :roomId
-      AND r.date = :date
-      AND r.status = :status
-      AND r.startTime < :end
-      AND r.endTime > :start
-""")
-    boolean existsRoomOverlap(
-            Long roomId,
-            LocalDate date,
-            RoomReservationStatus status,
-            LocalTime start,
-            LocalTime end
-    );
     @Query("""
     select count(r) > 0
     from RoomReservation r
@@ -36,29 +18,12 @@ public interface RoomReservationRepository extends JpaRepository<RoomReservation
       and r.date = :date
       and r.startTime < :endTime
       and r.endTime > :startTime
-      and r.status = 'RESERVED'
 """)
-    boolean existsActiveReservationOverlap(
+    boolean existsRoomOverlap(
             @Param("roomId") Long roomId,
             @Param("date") LocalDate date,
             @Param("startTime") LocalTime startTime,
             @Param("endTime") LocalTime endTime
-    );
-
-    @Query("""
-    SELECT COUNT(r) > 0
-    FROM RoomReservation r
-    WHERE r.room.id = :roomId
-      AND r.date = :date
-      AND str(r.status) NOT LIKE '%CANCELED%'
-      AND r.startTime < :end
-      AND r.endTime > :start
-""")
-    boolean existsBlockingReservation(
-            Long roomId,
-            LocalDate date,
-            LocalTime start,
-            LocalTime end
     );
 
 //    @Query("""
@@ -82,6 +47,4 @@ public interface RoomReservationRepository extends JpaRepository<RoomReservation
 //    int sumRoomDurationWeekly(Long studentId, LocalDate weekStart, LocalDate weekEnd);
 
     List<RoomReservation> findByRoom_IdAndDate(Long roomId, LocalDate date);
-
-
 }

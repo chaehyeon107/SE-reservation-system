@@ -15,7 +15,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.*;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -66,10 +67,9 @@ public class SeatReservationService {
 
         // 6) 하루 / 주간 누적 시간 한도 검증 (일 4시간, 한 번 예약할 때 2시간씩만 가능)
         int duration = req.getDurationHours();
-        if (duration != 1 && duration != 2) {
+        if (duration != 2 && duration != 4) {
             throw new CustomException(ErrorCode.INVALID_DURATION_HOURS);
         }
-
         int daily = student.getSeatDailyUsedHours();
         if (daily + duration > 4) {
             throw new CustomException(ErrorCode.SEAT_DAILY_LIMIT_EXCEEDED);
@@ -130,15 +130,14 @@ public class SeatReservationService {
 
         // 5) 이용 시간 검증 (2 또는 4)
         int duration = req.getDurationHours();
-        if (duration != 1 && duration != 2) {
+        if (duration != 2 && duration != 4) {
             throw new CustomException(ErrorCode.INVALID_DURATION_HOURS);
         }
 
-        int daily = student.getSeatDailyUsedHours();
-        if (daily + duration > 4) {
+        // 6) 하루 사용 4시간 초과 검증
+        if (student.getSeatDailyUsedHours() + duration > 4) {
             throw new CustomException(ErrorCode.SEAT_DAILY_LIMIT_EXCEEDED);
         }
-
 
         // 7) 사용자의 기존 예약과 시간 겹침 체크
         if (seatReservationRepository.existsStudentOverlap(
@@ -147,8 +146,8 @@ public class SeatReservationService {
         }
 
         // 8) 해당 시간에 예약된 좌석 목록 조회
-        //List<Integer> reservedSeatIds = seatReservationRepository.findReservedSeats(
-        //        req.getDate(), req.getStartTime(), endTime);
+        List<Integer> reservedSeatIds = seatReservationRepository.findReservedSeats(
+                req.getDate(), req.getStartTime(), endTime);
 
         // 전체 좌석(1~70)
         List<Integer> allSeats = IntStream.rangeClosed(1, 70)
@@ -221,58 +220,6 @@ public class SeatReservationService {
                 .map(r -> r.getSeat().getId().intValue())
                 .distinct()
                 .toList();
-    }
-
-    @Transactional
-    public String cancelSeatReservation(Long reservationId, Long studentId) {
-
-        // 1. 학번 검증
-        validateStudentId(studentId);
-
-        // 2. 좌석 예약 존재 여부 확인
-        //예약된 내역이 없습니다.
-        SeatReservation reservation = seatReservationRepository.findById(reservationId)
-                .orElseThrow(() -> new CustomException(ErrorCode.SEAT_RESERVATION_NOT_FOUND1));
-
-        // 3. 본인 예약인지 확인
-        //권한이 없습니다.
-        if (!reservation.getStudent().getStudentId().equals(studentId)) {
-            throw new CustomException(ErrorCode.NO_CANCEL_PERMISSION1);
-        }
-
-        // 4. 현재 시간 기준 비교
-        ZoneId kst = ZoneId.of("Asia/Seoul");
-        LocalDateTime now = LocalDateTime.now(kst);
-        LocalDateTime startAt = LocalDateTime.of(
-                reservation.getDate(),
-                reservation.getStartTime()
-        );
-
-        boolean beforeStart = now.isBefore(startAt);
-
-        // 5. 이미 이용 시작한 경우 → 취소 불가
-        if (!now.isBefore(startAt)) {
-            //이미 이용이 시작되어 취소할 수 없습니다.
-            throw new CustomException(ErrorCode.SEAT_ALREADY_IN_USE);
-        }
-
-        // 6. 환급 처리 (하루 사용 시간 복구)
-        Student student = reservation.getStudent();
-
-        // 날짜 기준 리셋
-        student.resetSeatIfNeeded(reservation.getDate());
-
-        int durationHours = (int) Duration
-                .between(reservation.getStartTime(), reservation.getEndTime())
-                .toHours();
-
-        // 사용 시간 환급
-        student.applySeatUsageDelta(-durationHours);
-
-        // 7. 예약 삭제 (좌석은 자동으로 예약 가능 상태)
-        seatReservationRepository.delete(reservation);
-
-        return beforeStart ? "시간 환급" : "환급 안 됨";
     }
 
     private void validateStudentId(Long studentId) {
