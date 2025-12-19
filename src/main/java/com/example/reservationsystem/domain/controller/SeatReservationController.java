@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/seats")
@@ -86,18 +87,14 @@ public class SeatReservationController {
     }
 
 
-    // ----------------------------------------------------------
-    // E) 좌석 예약 취소
-    // DELETE /api/seats/reservations/{id}?studentId=XXXX
-    // ----------------------------------------------------------
-//    @DeleteMapping("/reservations/{id}")
-//    public ResponseEntity<?> cancelSeatReservation(
-//            @PathVariable Long id,
-//            @RequestParam Long studentId
-//    ) {
-//        // 서비스에 취소 로직 추가한다고 가정
-//        seatReservationService.cancelReservation(id, studentId);
-//
-//        return ApiResponse.onSuccess(SuccessCode.CANCEL_SEAT_RESERVATION_SUCCESS, null);
-//    }
+    //     ----------------------------------------------------------
+//     E) 좌석 예약 취소
+//     DELETE /api/seats/reservations/{id}?studentId=XXXX
+//     ----------------------------------------------------------
+    @DeleteMapping("/reservations/{id}")
+    public ResponseEntity<?> cancelSeatReservation(@PathVariable("id") Long reservationId, @RequestParam("studentId") Long studentId) {
+        String message = seatReservationService.cancelSeatReservation(reservationId, studentId);
+        return ResponseEntity.ok(Map.of("message", message));
+    }
 }
+

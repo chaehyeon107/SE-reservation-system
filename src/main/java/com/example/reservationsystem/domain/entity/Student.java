@@ -23,11 +23,7 @@ public class Student {
 
     private String name;
 
-    //회의실 일일 최대 2시간
-    private int roomDailyLimitHours;
-
     private int seatDailyUsedHours;
-    private int seatWeeklyUsedHours;
 
     private LocalDate usageDate;
     private LocalDate usageWeekStart;
@@ -36,6 +32,7 @@ public class Student {
     private int meetingWeeklyUsedHours;
 
     private LocalDate seatUsageDate;
+
 
     public static Student of(Long studentId) {
         Student s = new Student();
@@ -64,9 +61,26 @@ public class Student {
         }
     }
 
+    public void resetMeetingDailyUsage() {
+        this.meetingDailyUsedHours = 0;
+    }
+
+    public void resetMeetingWeeklyUsage() {
+        this.meetingWeeklyUsedHours = 0;
+    }
+
     public void applyMeetingUsageDelta(int deltaHours) {
         meetingDailyUsedHours = Math.max(0, meetingDailyUsedHours + deltaHours);
         meetingWeeklyUsedHours = Math.max(0, meetingWeeklyUsedHours + deltaHours);
+    }
+
+
+    public void updateUsageDate(LocalDate date) {
+        this.usageDate = date;
+    }
+
+    public void updateUsageWeekStart(LocalDate weekStart) {
+        this.usageWeekStart = weekStart;
     }
 
     public void applySeatUsageDelta(int hours) {

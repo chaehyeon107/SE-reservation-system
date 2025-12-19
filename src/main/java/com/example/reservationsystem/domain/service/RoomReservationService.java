@@ -45,6 +45,18 @@ public class RoomReservationService {
         // 2) 종료시간
         LocalTime endTime = req.getStartTime().plusHours(req.getDuration());
 
+        boolean hasConflict =
+                roomReservationRepository.existsActiveReservationOverlap(
+                        req.getRoomId(),
+                        req.getDate(),
+                        req.getStartTime(),
+                        endTime
+                );
+
+        if (hasConflict) {
+            throw new CustomException(ErrorCode.ROOM_ALREADY_RESERVED);
+        }
+
         // 3) 참가자 최소 3명
         Set<Long> participantIds = new LinkedHashSet<>();
         participantIds.add(req.getRepresentativeStudentId());
@@ -59,7 +71,8 @@ public class RoomReservationService {
         }
 
         // 5) 회의실 중복 예약 검증
-        if (roomReservationRepository.existsRoomOverlap(room.getId(), req.getDate(), req.getStartTime(), endTime)) {
+        if (roomReservationRepository.existsRoomOverlap(room.getId(), req.getDate(), RoomReservationStatus.RESERVED,
+                req.getStartTime(), endTime)) {
             throw new CustomException(ErrorCode.ROOM_ALREADY_RESERVED);
         }
 
@@ -206,46 +219,46 @@ public class RoomReservationService {
         ZoneId kst = ZoneId.of("Asia/Seoul");
         LocalDateTime now = LocalDateTime.now(kst);
 
-        boolean beforeStart = now.isBefore(LocalDateTime.of(
+        LocalDateTime startAt = LocalDateTime.of(
                 reservation.getDate(),
                 reservation.getStartTime()
-        ));
+        );
+        LocalDateTime endAt = LocalDateTime.of(
+                reservation.getDate(),
+                reservation.getEndTime()
+        );
 
-        int durationHours = (int) java.time.Duration
+        if (now.isAfter(endAt)) {
+            throw new CustomException(ErrorCode.RESERVATION_ALREADY_FINISHED);
+        }
+
+        boolean beforeStart = now.isBefore(startAt);
+
+        int durationHours = (int) Duration
                 .between(reservation.getStartTime(), reservation.getEndTime())
                 .toHours();
 
-        if (durationHours <= 0) {
-            throw new CustomException(ErrorCode.INVALID_TIME_RANGE);
-        }
+        int delta = beforeStart ? -durationHours : +durationHours;
 
-        //참여자 조회
         List<RoomReservationParticipant> participants =
                 roomReservationParticipantRepository.findAllByReservation_Id(reservationId);
 
-        // 시작 전: 환급(-), 시작 후: 차감(+)
-        int delta = beforeStart ? -durationHours : +durationHours;
+        LocalDate today = now.toLocalDate();
+        LocalDate weekStart = today.with(DayOfWeek.MONDAY);
 
-        // 대표자 + 동반자 전원 환급/차감 처리
         for (RoomReservationParticipant p : participants) {
-            Long pid = p.getStudent().getStudentId();
+            Student s = p.getStudent();
 
-            Student s = studentRepository.findByStudentId(pid)
-                    .orElseThrow(() -> new CustomException(ErrorCode.STUDENT_NOT_FOUND));
-
+            resetMeetingUsageIfNeeded(s, today, weekStart);
             s.applyMeetingUsageDelta(delta);
         }
 
-        //삭제할지 말지 고민
-        reservation.cancel(beforeStart
-                ? RoomReservationStatus.CANCELED_REFUND
-                : RoomReservationStatus.CANCELED_PENALTY);
-
-        roomReservationParticipantRepository.deleteAll(participants); //FK
-        roomReservationRepository.delete(reservation);
-
+        reservation.cancel(
+                beforeStart
+                        ? RoomReservationStatus.CANCELED_REFUND
+                        : RoomReservationStatus.CANCELED_PENALTY
+        );
     }
-
 
     private void validateStudentId(Long studentId) {
         if (studentId == null) {
@@ -256,6 +269,23 @@ public class RoomReservationService {
             throw new CustomException(ErrorCode.INVALID_STUDENT_ID);
         }
     }
+
+    private void resetMeetingUsageIfNeeded(Student s,
+                                           LocalDate today,
+                                           LocalDate weekStart) {
+
+        if (!today.equals(s.getUsageDate())) {
+            s.resetMeetingDailyUsage();
+            s.updateUsageDate(today);
+        }
+
+        if (!weekStart.equals(s.getUsageWeekStart())) {
+            s.resetMeetingWeeklyUsage();
+            s.updateUsageWeekStart(weekStart);
+        }
+    }
+
+
 }
 
 

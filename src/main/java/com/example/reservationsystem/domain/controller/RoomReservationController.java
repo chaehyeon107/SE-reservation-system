@@ -70,7 +70,7 @@ public class RoomReservationController {
     /**
      * 4) 예약 취소
      */
-    @DeleteMapping("/{reservationId}")
+    @PatchMapping("/{reservationId}")
     public ResponseEntity<ApiResponse<Void>> cancelReservation(
             @Valid
             @PathVariable Long reservationId,
