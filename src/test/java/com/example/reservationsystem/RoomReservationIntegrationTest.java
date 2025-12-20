@@ -2,10 +2,7 @@ package com.example.reservationsystem;
 
 import com.example.reservationsystem.domain.entity.Room;
 import com.example.reservationsystem.domain.entity.Student;
-import com.example.reservationsystem.domain.repository.RoomRepository;
-import com.example.reservationsystem.domain.repository.RoomReservationParticipantRepository;
-import com.example.reservationsystem.domain.repository.RoomReservationRepository;
-import com.example.reservationsystem.domain.repository.StudentRepository;
+import com.example.reservationsystem.domain.repository.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +38,8 @@ class RoomReservationIntegrationTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
     @Autowired private WebApplicationContext wac;
 
+    @Autowired SeatReservationRepository seatReservationRepository;
+    @Autowired SeatRepository seatRepository;
     @Autowired RoomRepository roomRepository;
     @Autowired RoomReservationRepository roomReservationRepository;
     @Autowired RoomReservationParticipantRepository roomReservationParticipantRepository;
@@ -59,10 +58,13 @@ class RoomReservationIntegrationTest {
         this.mockMvc = webAppContextSetup(wac).build();
 
         // FK 순서 고려해서 정리
+        seatReservationRepository.deleteAll();
         roomReservationParticipantRepository.deleteAll();
         roomReservationRepository.deleteAll();
         studentRepository.deleteAll();
+        seatRepository.deleteAll();
         roomRepository.deleteAll();
+
 
         Room room = roomRepository.save(Room.builder().capacity(3).build());
         roomId = room.getId();

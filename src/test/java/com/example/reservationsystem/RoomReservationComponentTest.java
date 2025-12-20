@@ -107,7 +107,7 @@ public class RoomReservationComponentTest {
                         .content(body))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.isSuccess").value(true))
-                .andExpect(jsonPath("$.message").value("회의실 예약이 완료되었습니다."))
+                .andExpect(jsonPath("$.message").value("회의실 예약이 생성되었습니다."))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();

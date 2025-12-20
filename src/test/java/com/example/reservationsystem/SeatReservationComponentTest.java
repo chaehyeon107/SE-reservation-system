@@ -2,9 +2,7 @@ package com.example.reservationsystem;
 
 import com.example.reservationsystem.domain.entity.Seat;
 import com.example.reservationsystem.domain.entity.SeatReservation;
-import com.example.reservationsystem.domain.repository.SeatRepository;
-import com.example.reservationsystem.domain.repository.SeatReservationRepository;
-import com.example.reservationsystem.domain.repository.StudentRepository;
+import com.example.reservationsystem.domain.repository.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +36,11 @@ class SeatReservationComponentTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
     @Autowired private WebApplicationContext wac;
 
+    // FK 오류나서 추가
+    @Autowired RoomReservationRepository roomReservationRepository;
+    @Autowired RoomReservationParticipantRepository roomReservationParticipantRepository;
+    @Autowired RoomRepository roomRepository;
+
     @Autowired SeatRepository seatRepository;
     @Autowired SeatReservationRepository seatReservationRepository;
     @Autowired StudentRepository studentRepository;
@@ -47,6 +50,10 @@ class SeatReservationComponentTest {
     @BeforeEach
     void setup() {
         this.mockMvc = webAppContextSetup(wac).build();
+        roomReservationParticipantRepository.deleteAll();
+        roomReservationRepository.deleteAll();
+        roomRepository.deleteAll();
+
         seatReservationRepository.deleteAll();
         seatReservationRepository.flush();
         studentRepository.deleteAll();
