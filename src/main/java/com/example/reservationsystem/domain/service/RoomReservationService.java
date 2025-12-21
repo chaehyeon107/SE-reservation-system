@@ -33,58 +33,107 @@ public class RoomReservationService {
     @Transactional
     public ReservationResponseDto createRoomReservation(ReservationRequestDto req) {
 
-        // 0) room 존재 확인
+        /* =====================================================
+         * 0) 학번 검증 (대표자 + 참가자 전원)
+         * ===================================================== */
+        Set<Long> allStudentIds = new LinkedHashSet<>();
+        allStudentIds.add(req.getRepresentativeStudentId());
+        if (req.getParticipantStudentIds() != null) {
+            allStudentIds.addAll(req.getParticipantStudentIds());
+        }
+
+        for (Long sid : allStudentIds) {
+            validateStudentId(sid);
+        }
+
+        /* =====================================================
+         * 1) 회의실 존재 확인
+         * ===================================================== */
         Room room = roomRepository.findById(req.getRoomId())
                 .orElseThrow(() -> new CustomException(ErrorCode.ROOM_NOT_FOUND));
 
-        // 1) 대표자 Student 확보
-        validateStudentId(req.getRepresentativeStudentId());
+        /* =====================================================
+         * 2) 대표자 Student 확보
+         * ===================================================== */
         Student representative = studentRepository.findByStudentId(req.getRepresentativeStudentId())
                 .orElseGet(() -> studentRepository.save(Student.of(req.getRepresentativeStudentId())));
 
-        // 2) 종료시간
+        /* =====================================================
+         * 3) 종료 시간 계산
+         * ===================================================== */
         LocalTime endTime = req.getStartTime().plusHours(req.getDuration());
 
-        // 3) 참가자 최소 3명
-        Set<Long> participantIds = new LinkedHashSet<>();
-        participantIds.add(req.getRepresentativeStudentId());
-        if (req.getParticipantStudentIds() != null) participantIds.addAll(req.getParticipantStudentIds());
-        if (participantIds.size() < 3) throw new CustomException(ErrorCode.INVALID_PARTICIPANT_COUNT);
+        /* =====================================================
+         * 4) 회의실 시간 겹침 검사
+         * ===================================================== */
+        boolean hasConflict =
+                roomReservationRepository.existsActiveReservationOverlap(
+                        req.getRoomId(),
+                        req.getDate(),
+                        req.getStartTime(),
+                        endTime
+                );
 
-        // 4) 운영시간 검증
-        if (req.getStartTime().isBefore(OPEN) ||
-                endTime.isAfter(CLOSE) ||
-                !req.getStartTime().isBefore(endTime)) {
-            throw new CustomException(ErrorCode.OUT_OF_OPERATING_HOURS);
-        }
-
-        // 5) 회의실 중복 예약 검증
-        if (roomReservationRepository.existsRoomOverlap(room.getId(), req.getDate(), req.getStartTime(), endTime)) {
+        if (hasConflict) {
             throw new CustomException(ErrorCode.ROOM_ALREADY_RESERVED);
         }
 
-        // 6) 참가자 전원 Student 확보 + 시간 겹침 검증 + "student 엔티티 기반" 한도 검증
-        LocalDate weekStart = req.getDate().with(DayOfWeek.MONDAY);
-        LocalDate weekEnd = weekStart.plusDays(6);
+        /* =====================================================
+         * 5) 참가자 수 검증 (최소 3명)
+         * ===================================================== */
+        Set<Long> participantIds = new LinkedHashSet<>();
+        participantIds.add(req.getRepresentativeStudentId());
+        if (req.getParticipantStudentIds() != null) {
+            participantIds.addAll(req.getParticipantStudentIds());
+        }
 
+        if (participantIds.size() < 3) {
+            throw new CustomException(ErrorCode.INVALID_PARTICIPANT_COUNT);
+        }
+
+        /* =====================================================
+         * 6) 운영 시간 검증
+         * ===================================================== */
+        if (req.getStartTime().isBefore(OPEN)
+                || endTime.isAfter(CLOSE)
+                || !req.getStartTime().isBefore(endTime)) {
+            throw new CustomException(ErrorCode.OUT_OF_OPERATING_HOURS);
+        }
+
+        /* =====================================================
+         * 7) 회의실 중복 예약 검증 (RESERVED 기준)
+         * ===================================================== */
+        if (roomReservationRepository.existsRoomOverlap(
+                room.getId(),
+                req.getDate(),
+                RoomReservationStatus.RESERVED,
+                req.getStartTime(),
+                endTime)) {
+            throw new CustomException(ErrorCode.ROOM_ALREADY_RESERVED);
+        }
+
+        /* =====================================================
+         * 8) 참가자 Student 확보 + 시간/한도 검증
+         * ===================================================== */
         Map<Long, Student> studentMap = new HashMap<>();
 
         for (Long sid : participantIds) {
-            validateStudentId(sid);
-
             Student stu = studentRepository.findByStudentId(sid)
                     .orElseGet(() -> studentRepository.save(Student.of(sid)));
 
-            // 날짜 변경 시 daily/weekly reset
+            // 날짜 변경 시 daily / weekly reset
             stu.resetIfNeeded(req.getDate());
 
-            // (A) 겹침 방지
+            // (A) 개인 일정 겹침 방지
             if (roomReservationParticipantRepository.existsStudentOverlap(
-                    sid, req.getDate(), req.getStartTime(), endTime)) {
+                    sid,
+                    req.getDate(),
+                    req.getStartTime(),
+                    endTime)) {
                 throw new CustomException(ErrorCode.OVERLAPPING_RESERVATION);
             }
 
-            // (B) student 엔티티의 누적 값으로 한도 검증
+            // (B) 일일 / 주간 한도 검증
             if (stu.getMeetingDailyUsedHours() + req.getDuration() > ROOM_DAILY_LIMIT_HOURS) {
                 throw new CustomException(ErrorCode.ROOM_DAILY_LIMIT_EXCEEDED);
             }
@@ -95,12 +144,22 @@ public class RoomReservationService {
             studentMap.put(sid, stu);
         }
 
-        // 7) 예약 저장
+        /* =====================================================
+         * 9) 예약 저장
+         * ===================================================== */
         RoomReservation saved = roomReservationRepository.save(
-                RoomReservation.of(room, representative, req.getDate(), req.getStartTime(), req.getDuration())
+                RoomReservation.of(
+                        room,
+                        representative,
+                        req.getDate(),
+                        req.getStartTime(),
+                        req.getDuration()
+                )
         );
 
-        // 8) 참가자-예약 매핑 저장
+        /* =====================================================
+         * 10) 참가자-예약 매핑 저장
+         * ===================================================== */
         roomReservationParticipantRepository.save(
                 RoomReservationParticipant.of(saved, representative, true)
         );
@@ -116,7 +175,9 @@ public class RoomReservationService {
             }
         }
 
-        // 9) 누적 시간 반영 (저장)
+        /* =====================================================
+         * 11) 누적 사용 시간 반영
+         * ===================================================== */
         for (Student stu : studentMap.values()) {
             stu.applyMeetingUsageDelta(req.getDuration());
         }
@@ -206,46 +267,46 @@ public class RoomReservationService {
         ZoneId kst = ZoneId.of("Asia/Seoul");
         LocalDateTime now = LocalDateTime.now(kst);
 
-        boolean beforeStart = now.isBefore(LocalDateTime.of(
+        LocalDateTime startAt = LocalDateTime.of(
                 reservation.getDate(),
                 reservation.getStartTime()
-        ));
+        );
+        LocalDateTime endAt = LocalDateTime.of(
+                reservation.getDate(),
+                reservation.getEndTime()
+        );
 
-        int durationHours = (int) java.time.Duration
+        if (now.isAfter(endAt)) {
+            throw new CustomException(ErrorCode.RESERVATION_ALREADY_FINISHED);
+        }
+
+        boolean beforeStart = now.isBefore(startAt);
+
+        int durationHours = (int) Duration
                 .between(reservation.getStartTime(), reservation.getEndTime())
                 .toHours();
 
-        if (durationHours <= 0) {
-            throw new CustomException(ErrorCode.INVALID_TIME_RANGE);
-        }
+        int delta = beforeStart ? -durationHours : +durationHours;
 
-        //참여자 조회
         List<RoomReservationParticipant> participants =
                 roomReservationParticipantRepository.findAllByReservation_Id(reservationId);
 
-        // 시작 전: 환급(-), 시작 후: 차감(+)
-        int delta = beforeStart ? -durationHours : +durationHours;
+        LocalDate today = now.toLocalDate();
+        LocalDate weekStart = today.with(DayOfWeek.MONDAY);
 
-        // 대표자 + 동반자 전원 환급/차감 처리
         for (RoomReservationParticipant p : participants) {
-            Long pid = p.getStudent().getStudentId();
+            Student s = p.getStudent();
 
-            Student s = studentRepository.findByStudentId(pid)
-                    .orElseThrow(() -> new CustomException(ErrorCode.STUDENT_NOT_FOUND));
-
+            resetMeetingUsageIfNeeded(s, today, weekStart);
             s.applyMeetingUsageDelta(delta);
         }
 
-        //삭제할지 말지 고민
-        reservation.cancel(beforeStart
-                ? RoomReservationStatus.CANCELED_REFUND
-                : RoomReservationStatus.CANCELED_PENALTY);
-
-        roomReservationParticipantRepository.deleteAll(participants); //FK
-        roomReservationRepository.delete(reservation);
-
+        reservation.cancel(
+                beforeStart
+                        ? RoomReservationStatus.CANCELED_REFUND
+                        : RoomReservationStatus.CANCELED_PENALTY
+        );
     }
-
 
     private void validateStudentId(Long studentId) {
         if (studentId == null) {
@@ -256,6 +317,23 @@ public class RoomReservationService {
             throw new CustomException(ErrorCode.INVALID_STUDENT_ID);
         }
     }
+
+    private void resetMeetingUsageIfNeeded(Student s,
+                                           LocalDate today,
+                                           LocalDate weekStart) {
+
+        if (!today.equals(s.getUsageDate())) {
+            s.resetMeetingDailyUsage();
+            s.updateUsageDate(today);
+        }
+
+        if (!weekStart.equals(s.getUsageWeekStart())) {
+            s.resetMeetingWeeklyUsage();
+            s.updateUsageWeekStart(weekStart);
+        }
+    }
+
+
 }
 
 

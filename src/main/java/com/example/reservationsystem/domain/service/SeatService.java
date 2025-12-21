@@ -17,7 +17,7 @@ public class SeatService {
     @Transactional
     public void createDefaultSeats() {
 
-       // if (seatRepository.count() > 0) return; // 중복 생성 방지
+        // if (seatRepository.count() > 0) return; // 중복 생성 방지
 
         for (int i = 1; i <= 70; i++) {
             seatRepository.save(Seat.builder()

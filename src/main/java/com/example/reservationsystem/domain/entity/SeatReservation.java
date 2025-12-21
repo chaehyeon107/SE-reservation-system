@@ -21,17 +21,20 @@ public class SeatReservation extends BaseEntity {
     private Long id;
 
     @ManyToOne
+    @JoinColumn(name = "seat_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Seat seat;
 
     @ManyToOne
+    @JoinColumn(name = "student_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Student student;
 
     //예약 일자
     private LocalDate date;
 
-    //시작
+    //시작시간
     private LocalTime startTime;
 
+    //종료시간
     private LocalTime endTime;
 
 

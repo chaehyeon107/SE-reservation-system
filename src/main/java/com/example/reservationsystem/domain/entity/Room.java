@@ -19,7 +19,12 @@ public class Room {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private String name;
+
     //최소인원 체크
     private int capacity;
 
+    private String location;
+
 }
+

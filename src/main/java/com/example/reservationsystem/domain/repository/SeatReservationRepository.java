@@ -57,5 +57,18 @@ public interface SeatReservationRepository  extends JpaRepository<SeatReservatio
             @Param("endTime") LocalTime endTime
     );
 
+    @Query("""
+    select distinct r.seat.id
+    from SeatReservation r
+    where r.date = :date
+      and r.startTime < :endTime
+      and r.endTime > :startTime
+""")
+    List<Long> findReservedSeatIds(
+            @Param("date") LocalDate date,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime
+    );
+
     List<SeatReservation> findByDate(LocalDate date);
 }
